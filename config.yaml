@@ -1,0 +1,16 @@
+model_list:
+  - model_name: qwen-local
+    litellm_params:
+      model: ollama/qwen2.5-coder:0.5b
+      api_base: http://localhost:11434
+
+general_settings:
+  master_key: sk-master-1234
+  database_url: "postgresql://postgres:Password123@127.0.0.1:5432/litellm"
+  
+  # The definitive production parameters for LiteLLM OpenTelemetry routing
+  litellm_logging:
+    - opentelemetry
+    
+  # Directs the OpenTelemetry exporter to hit your local Phoenix gRPC collector port
+  otel_exporter_otlp_endpoint: "http://127.0.0.1:4317"
