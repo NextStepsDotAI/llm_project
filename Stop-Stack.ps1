@@ -2,10 +2,13 @@
 # CONFIGURATION (DYNAMIC PATHS)
 # ==========================================
 $WorkingDir = $PSScriptRoot
-$PhoenixPidFile = "$WorkingDir\phoenix.pid"
-$LiteLLMPidFile = "$WorkingDir\litellm.pid"
-$PhoenixErrLog  = "$WorkingDir\phoenix.err"
-$LiteLLMErrLog  = "$WorkingDir\litellm.err"
+$LogDir = "$WorkingDir\log"
+$TmpDir = "$WorkingDir\tmp"
+
+$PhoenixPidFile = "$TmpDir\phoenix.pid"
+$LiteLLMPidFile = "$TmpDir\litellm.pid"
+$PhoenixErrLog  = "$LogDir\phoenix.err"
+$LiteLLMErrLog  = "$LogDir\litellm.err"
 
 Write-Host "==================================================" -ForegroundColor Magenta
 Write-Host " SHUTTING DOWN AI DEVELOPMENT STACK CLEANLY       " -ForegroundColor Magenta
@@ -39,16 +42,16 @@ function Stop-BackgroundProcess {
         Write-Host "⚠ No track file found for $ProcessName ($PidFilePath is absent)." -ForegroundColor Gray
     }
 
-    # Clean up the runtime error log file if it exists to keep the workspace immaculate
+    # Clean up the runtime error log file if it exists inside the log folder
     if (Test-Path $ErrLogPath) {
         Remove-Item $ErrLogPath -Force
     }
 }
 
-# Execute shutdowns using tracking files and pass the new error log targets
+# Execute shutdowns using tracking files matching new path metrics
 Stop-BackgroundProcess -PidFilePath $LiteLLMPidFile -ProcessName "LiteLLM Proxy" -ErrLogPath $LiteLLMErrLog
 Stop-BackgroundProcess -PidFilePath $PhoenixPidFile -ProcessName "Arize Phoenix" -ErrLogPath $PhoenixErrLog
 
 Write-Host "==================================================" -ForegroundColor Magenta
 Write-Host "Shutdown sequence complete. All ports cleared." -ForegroundColor Green
-Start-Sleep -Seconds 20
+Start-Sleep -Seconds 2

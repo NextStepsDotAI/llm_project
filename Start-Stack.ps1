@@ -1,18 +1,25 @@
 # ==========================================
 # ENVIRONMENT CONFIGURATION (DYNAMIC PATHS)
 # ==========================================
-# Automatically maps to whatever folder this script is sitting in
 $WorkingDir = $PSScriptRoot
 Set-Location $WorkingDir
 
-# Define Log and PID paths relative to the script location
-$PhoenixLog    = "$WorkingDir\phoenix.log"
-$PhoenixErrLog = "$WorkingDir\phoenix.err"
-$LiteLLMLog    = "$WorkingDir\litellm.log"
-$LiteLLMErrLog = "$WorkingDir\litellm.err"
+# Define isolated subdirectories
+$LogDir = "$WorkingDir\log"
+$TmpDir = "$WorkingDir\tmp"
 
-$PhoenixPidFile = "$WorkingDir\phoenix.pid"
-$LiteLLMPidFile = "$WorkingDir\litellm.pid"
+# Automatically ensure directories exist before launching
+if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir | Out-Null }
+if (-not (Test-Path $TmpDir)) { New-Item -ItemType Directory -Path $TmpDir | Out-Null }
+
+# Re-route Log and PID configurations to their designated targets
+$PhoenixLog    = "$LogDir\phoenix.log"
+$PhoenixErrLog = "$LogDir\phoenix.err"
+$LiteLLMLog    = "$LogDir\litellm.log"
+$LiteLLMErrLog = "$LogDir\litellm.err"
+
+$PhoenixPidFile = "$TmpDir\phoenix.pid"
+$LiteLLMPidFile = "$TmpDir\litellm.pid"
 
 # Set network environment bypass variables
 $env:NO_PROXY="127.0.0.1,localhost"
@@ -26,7 +33,7 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host " STARTING AI DEVELOPMENT STACK (BACKGROUND MODE) " -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
-# Clear out any old PID or error files from previous unclean runs
+# Clean up stale pid/error structures inside our subfolders
 Remove-Item $PhoenixPidFile, $LiteLLMPidFile, $PhoenixErrLog, $LiteLLMErrLog -ErrorAction SilentlyContinue
 
 # ==========================================
@@ -69,11 +76,11 @@ if ($LiteLLMProcess) {
 # ==========================================
 # 3. SELF-DESTRUCT ORCHESTRATOR WINDOW
 # ==========================================
---------------------------------------------------
+Write-Host "--------------------------------------------------" -ForegroundColor Cyan
 Write-Host "All processes are running silently in the background." -ForegroundColor White
-Write-Host "Logs are being captured in separate .log and .err files." -ForegroundColor White
+Write-Host "Outputs are structured under \log and \tmp subfolders." -ForegroundColor White
 
-for ($i = 25; $i -gt 0; $i--) {
+for ($i = 5; $i -gt 0; $i--) {
     Write-Host "`rThis orchestrator console will close automatically in $i seconds... " -NoNewline -ForegroundColor Gray
     Start-Sleep -Seconds 1
 }
