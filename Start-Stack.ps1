@@ -73,7 +73,7 @@ if ($LiteLLMProcess) {
 Write-Host "All processes are running silently in the background." -ForegroundColor White
 Write-Host "Logs are being captured in separate .log and .err files." -ForegroundColor White
 
-for ($i = 5; $i -gt 0; $i--) {
+for ($i = 25; $i -gt 0; $i--) {
     Write-Host "`rThis orchestrator console will close automatically in $i seconds... " -NoNewline -ForegroundColor Gray
     Start-Sleep -Seconds 1
 }
