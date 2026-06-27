@@ -1,8 +1,4 @@
 # ==========================================
-# ENVIRONMENT CONFIGURATION
-# ==========================================
-
-# ==========================================
 # ENVIRONMENT CONFIGURATION (DYNAMIC PATHS)
 # ==========================================
 # Automatically maps to whatever folder this script is sitting in
@@ -10,8 +6,11 @@ $WorkingDir = $PSScriptRoot
 Set-Location $WorkingDir
 
 # Define Log and PID paths relative to the script location
-$PhoenixLog = "$WorkingDir\phoenix.log"
-$LiteLLMLog = "$WorkingDir\litellm.log"
+$PhoenixLog    = "$WorkingDir\phoenix.log"
+$PhoenixErrLog = "$WorkingDir\phoenix.err"
+$LiteLLMLog    = "$WorkingDir\litellm.log"
+$LiteLLMErrLog = "$WorkingDir\litellm.err"
+
 $PhoenixPidFile = "$WorkingDir\phoenix.pid"
 $LiteLLMPidFile = "$WorkingDir\litellm.pid"
 
@@ -27,18 +26,18 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host " STARTING AI DEVELOPMENT STACK (BACKGROUND MODE) " -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
-# Clear out any old PID files from previous unclean runs
-Remove-Item $PhoenixPidFile, $LiteLLMPidFile -ErrorAction SilentlyContinue
+# Clear out any old PID or error files from previous unclean runs
+Remove-Item $PhoenixPidFile, $LiteLLMPidFile, $PhoenixErrLog, $LiteLLMErrLog -ErrorAction SilentlyContinue
 
 # ==========================================
 # 1. LAUNCH ARIZE PHOENIX
 # ==========================================
 Write-Host "Launching Arize Phoenix on port 6006..." -ForegroundColor Yellow
-# Adjust 'arize-phoenix start' to your exact global launch syntax if needed (e.g., 'python -m phoenix.server.main launch')
+
 $PhoenixProcess = Start-Process -FilePath "python" -ArgumentList "-m phoenix.server.main launch" `
     -NoNewWindow -PassThru `
     -RedirectStandardOutput $PhoenixLog `
-    -RedirectStandardError $PhoenixLog
+    -RedirectStandardError $PhoenixErrLog
 
 if ($PhoenixProcess) {
     $PhoenixProcess.Id | Out-File -FilePath $PhoenixPidFile -Encoding ascii
@@ -54,10 +53,11 @@ Start-Sleep -Seconds 2
 # 2. LAUNCH LITELLM PROXY
 # ==========================================
 Write-Host "Launching LiteLLM Proxy on port 4000..." -ForegroundColor Yellow
+
 $LiteLLMProcess = Start-Process -FilePath "litellm" -ArgumentList "--config config.yaml --host 127.0.0.1 --port 4000 --detailed_debug" `
     -NoNewWindow -PassThru `
     -RedirectStandardOutput $LiteLLMLog `
-    -RedirectStandardError $LiteLLMLog
+    -RedirectStandardError $LiteLLMErrLog
 
 if ($LiteLLMProcess) {
     $LiteLLMProcess.Id | Out-File -FilePath $LiteLLMPidFile -Encoding ascii
@@ -69,9 +69,9 @@ if ($LiteLLMProcess) {
 # ==========================================
 # 3. SELF-DESTRUCT ORCHESTRATOR WINDOW
 # ==========================================
-Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+--------------------------------------------------
 Write-Host "All processes are running silently in the background." -ForegroundColor White
-Write-Host "Logs are being captured in separate .log files." -ForegroundColor White
+Write-Host "Logs are being captured in separate .log and .err files." -ForegroundColor White
 
 for ($i = 5; $i -gt 0; $i--) {
     Write-Host "`rThis orchestrator console will close automatically in $i seconds... " -NoNewline -ForegroundColor Gray
