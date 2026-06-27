@@ -50,10 +50,8 @@ if ($IsAlreadyRunning) {
 # ==========================================
 # AUTOMATIC LOG ROLLING SEQUENCE
 # ==========================================
-$PhoenixLog    = "$LogDir\phoenix.log"
-$PhoenixErrLog = "$LogDir\phoenix.err"
-$LiteLLMLog    = "$LogDir\litellm.log"
-$LiteLLMErrLog = "$LogDir\litellm.err"
+$PhoenixLog = "$LogDir\phoenix.log"
+$LiteLLMLog = "$LogDir\litellm.log"
 
 $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $LogsToRoll = @(
@@ -84,40 +82,40 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host " STARTING AI DEVELOPMENT STACK (BACKGROUND MODE) " -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
-Remove-Item $PhoenixPidFile, $LiteLLMPidFile, $PhoenixErrLog, $LiteLLMErrLog -ErrorAction SilentlyContinue
+# Clean out any old tracking files from previous runs
+Remove-Item $PhoenixPidFile, $LiteLLMPidFile -ErrorAction SilentlyContinue
 
 # ==========================================
-# 1. LAUNCH ARIZE PHOENIX
+# 1. LAUNCH ARIZE PHOENIX (Unified Streams)
 # ==========================================
 Write-Host "Launching Arize Phoenix on port 6006..." -ForegroundColor Yellow
 
-$PhoenixProcess = Start-Process -FilePath "python" -ArgumentList "-m phoenix.server.main launch" `
-    -NoNewWindow -PassThru `
-    -RedirectStandardOutput $PhoenixLog `
-    -RedirectStandardError $PhoenixErrLog
+# Using cmd /c wrapper to seamlessly merge stdout and stderr (2>&1) into a single chronological timeline
+$PhoenixProcess = Start-Process -FilePath "cmd" -ArgumentList "/c python -m phoenix.server.main serve >> `"$PhoenixLog`" 2>&1" `
+    -NoNewWindow -PassThru
 
 if ($PhoenixProcess) {
     $PhoenixProcess.Id | Out-File -FilePath $PhoenixPidFile -Encoding ascii
-    Write-Host "✔ Phoenix started successfully. PID: $($PhoenixProcess.Id)" -ForegroundColor Green
+    Write-Host "✔ Phoenix wrapper initialized. PID: $($PhoenixProcess.Id)" -ForegroundColor Green
 } else {
     Write-Host "❌ Failed to start Phoenix." -ForegroundColor Red
 }
 
+# Brief pause to let Phoenix claim its socket before LiteLLM binds
 Start-Sleep -Seconds 2
 
 # ==========================================
-# 2. LAUNCH LITELLM PROXY
+# 2. LAUNCH LITELLM PROXY (Unified Streams)
 # ==========================================
 Write-Host "Launching LiteLLM Proxy on port 4000..." -ForegroundColor Yellow
 
-$LiteLLMProcess = Start-Process -FilePath "litellm" -ArgumentList "--config config.yaml --host 127.0.0.1 --port 4000 --detailed_debug" `
-    -NoNewWindow -PassThru `
-    -RedirectStandardOutput $LiteLLMLog `
-    -RedirectStandardError $LiteLLMErrLog
+# Using cmd /c wrapper to seamlessly merge stdout and stderr (2>&1) into a single chronological timeline
+$LiteLLMProcess = Start-Process -FilePath "cmd" -ArgumentList "/c litellm --config config.yaml --host 127.0.0.1 --port 4000 --detailed_debug >> `"$LiteLLMLog`" 2>&1" `
+    -NoNewWindow -PassThru
 
 if ($LiteLLMProcess) {
     $LiteLLMProcess.Id | Out-File -FilePath $LiteLLMPidFile -Encoding ascii
-    Write-Host "✔ LiteLLM Proxy started successfully. PID: $($LiteLLMProcess.Id)" -ForegroundColor Green
+    Write-Host "✔ LiteLLM Proxy wrapper initialized. PID: $($LiteLLMProcess.Id)" -ForegroundColor Green
 } else {
     Write-Host "❌ Failed to start LiteLLM Proxy." -ForegroundColor Red
 }
@@ -129,7 +127,7 @@ Write-Host "--------------------------------------------------" -ForegroundColor
 Write-Host "All processes are running silently in the background." -ForegroundColor White
 Write-Host "Outputs are structured under \log and \tmp subfolders." -ForegroundColor White
 
-# Force a brief pause so the console output can be read if launched interactively
+# Force a brief pause so output can be captured cleanly by the batch orchestrator log
 Start-Sleep -Seconds 5
 
 Exit

@@ -7,8 +7,6 @@ $TmpDir = "$WorkingDir\tmp"
 
 $PhoenixPidFile = "$TmpDir\phoenix.pid"
 $LiteLLMPidFile = "$TmpDir\litellm.pid"
-$PhoenixErrLog  = "$LogDir\phoenix.err"
-$LiteLLMErrLog  = "$LogDir\litellm.err"
 
 Write-Host "==================================================" -ForegroundColor Magenta
 Write-Host " SHUTTING DOWN AI DEVELOPMENT STACK CLEANLY       " -ForegroundColor Magenta
@@ -18,22 +16,21 @@ Write-Host "==================================================" -ForegroundColor
 function Stop-BackgroundProcess {
     param (
         [string]$PidFilePath,
-        [string]$ProcessName,
-        [string]$ErrLogPath
+        [string]$ProcessName
     )
 
     if (Test-Path $PidFilePath) {
         $PidValue = (Get-Content $PidFilePath).Trim()
         if ($PidValue) {
-            Write-Host "Attempting to stop $ProcessName (PID: $PidValue)..." -ForegroundColor Yellow
+            Write-Host "Attempting to stop $ProcessName (PID tree: $PidValue)..." -ForegroundColor Yellow
             
-            # Verify the process is actually running before attacking it
+            # Verify the wrapper process is active before executing a teardown
             if (Get-Process -Id $PidValue -ErrorAction SilentlyContinue) {
-                # Stop process tree recursively to prevent orphan/zombie threads
-                Stop-Process -Id $PidValue -Force
-                Write-Host "✔ $ProcessName (PID: $PidValue) terminated successfully." -ForegroundColor Green
+                # Use taskkill with tree (/T) and force (/F) flags to clean up both cmd and spawned child engine runtimes
+                taskkill /PID $PidValue /T /F | Out-Null
+                Write-Host "✔ $ProcessName process tree terminated successfully." -ForegroundColor Green
             } else {
-                Write-Host "⚠ PID $PidValue was found but process is not actively running." -ForegroundColor Gray
+                Write-Host "⚠ PID $PidValue was found but process tree is not actively running." -ForegroundColor Gray
             }
         }
         # Clean up the file marker
@@ -41,16 +38,11 @@ function Stop-BackgroundProcess {
     } else {
         Write-Host "⚠ No track file found for $ProcessName ($PidFilePath is absent)." -ForegroundColor Gray
     }
-
-    # Clean up the runtime error log file if it exists inside the log folder
-    if (Test-Path $ErrLogPath) {
-        Remove-Item $ErrLogPath -Force
-    }
 }
 
 # Execute shutdowns using tracking files matching new path metrics
-Stop-BackgroundProcess -PidFilePath $LiteLLMPidFile -ProcessName "LiteLLM Proxy" -ErrLogPath $LiteLLMErrLog
-Stop-BackgroundProcess -PidFilePath $PhoenixPidFile -ProcessName "Arize Phoenix" -ErrLogPath $PhoenixErrLog
+Stop-BackgroundProcess -PidFilePath $LiteLLMPidFile -ProcessName "LiteLLM Proxy"
+Stop-BackgroundProcess -PidFilePath $PhoenixPidFile -ProcessName "Arize Phoenix"
 
 Write-Host "==================================================" -ForegroundColor Magenta
 Write-Host "Shutdown sequence complete. All ports cleared." -ForegroundColor Green
